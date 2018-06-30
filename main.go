@@ -1,11 +1,19 @@
 package main
 
 import (
+    "database/sql"
+    "fmt"
+    _ "github.com/lib/pq"
     "encoding/json"
     "log"
     "net/http"
     "github.com/gorilla/mux"
-    // "strconv"
+)
+
+const (
+    DB_USER     = "adamconway"
+    DB_PASSWORD = "postgres"
+    DB_NAME     = "adamconway"
 )
 
 type Food struct {
@@ -49,8 +57,35 @@ func GetMealFoods(w http.ResponseWriter, r *http.Request) {}
 func CreateMealFood(w http.ResponseWriter, r *http.Request) {}
 func DeleteMealFood(w http.ResponseWriter, r *http.Request) {}
 
+// Database creation
+// CREATE TABLE foods
+//     (
+//         uid serial NOT NULL,
+//         name character varying(100) NOT NULL,
+//         calories character varying(500) NOT NULL,
+//         Created date,
+//         CONSTRAINT userinfo_pkey PRIMARY KEY (uid)
+//     )
+//     WITH (OIDS=FALSE);
+
 // our main function
 func main() {
+  dbinfo := fmt.Sprintf("user=%s "+
+    "password=%s dbname=%s sslmode=disable",
+    DB_USER, DB_PASSWORD, DB_NAME)
+  db, err := sql.Open("postgres", dbinfo)
+  if err != nil {
+    panic(err)
+  }
+  defer db.Close()
+
+  err = db.Ping()
+  if err != nil {
+    panic(err)
+  }
+
+  fmt.Println("Successfully connected!")
+
   router := mux.NewRouter()
   foods = append(foods, Food{ID: "1", Name: "Oreos", Calories: 100})
   foods = append(foods, Food{ID: "2", Name: "Pizza", Calories: 200})
