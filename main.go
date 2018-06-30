@@ -5,6 +5,7 @@ import (
     "log"
     "net/http"
     "github.com/gorilla/mux"
+    // "strconv"
 )
 
 type Food struct {
@@ -30,7 +31,17 @@ func GetFood(w http.ResponseWriter, r *http.Request) {
   json.NewEncoder(w).Encode(&Food{})
 }
 
-func CreateFood(w http.ResponseWriter, r *http.Request) {}
+func CreateFood(w http.ResponseWriter, r *http.Request) {
+  params := mux.Vars(r)
+  var food Food
+  _ = json.NewDecoder(r.Body).Decode(&food)
+  food.ID = "4"
+  food.Name = params["name"]
+  // food.Calories = strconv.Atoi(params["Calories"])
+  foods = append(foods, food)
+  json.NewEncoder(w).Encode(foods)
+}
+
 func UpdateFood(w http.ResponseWriter, r *http.Request) {}
 func DeleteFood(w http.ResponseWriter, r *http.Request) {}
 func GetMeals(w http.ResponseWriter, r *http.Request) {}
