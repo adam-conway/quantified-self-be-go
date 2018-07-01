@@ -7,6 +7,7 @@ import (
   "log"
   "net/http"
   "os"
+  "github.com/gorilla/mux"
 
   _ "github.com/lib/pq"
 )
@@ -32,14 +33,16 @@ const (
 )
 
 func main() {
+  router := mux.NewRouter()
   initDb()
   defer db.Close()
-  http.HandleFunc("/api/v1/foods", foodsHandler)
+  router.HandleFunc("/api/v1/foods", getFoods).Methods("GET")
+  router.HandleFunc("/api/v1/foods", createFood).Methods("POST")
   http.HandleFunc("/api/v1/food/{id}", foodHandler)
-  log.Fatal(http.ListenAndServe("localhost:8000", nil))
+  log.Fatal(http.ListenAndServe("localhost:8000", router))
 }
 
-func foodsHandler(w http.ResponseWriter, r *http.Request) {
+func getFoods(w http.ResponseWriter, r *http.Request) {
   foodindex := foods{}
 
   err := queryDb(&foodindex)
@@ -55,6 +58,23 @@ func foodsHandler(w http.ResponseWriter, r *http.Request) {
   }
 
   fmt.Fprintf(w, string(out))
+}
+
+func createFood(w http.ResponseWriter, r *http.Request) {
+  r.ParseForm()
+  name := r.FormValue("name")
+  calories := r.FormValue("calories")
+
+  sqlStatement := `
+  INSERT INTO foods (name, calories)
+  VALUES ($1, $2)
+  RETURNING id`
+  id := 0
+  err := db.QueryRow(sqlStatement, name, calories).Scan(&id)
+  if err != nil {
+    panic(err)
+  }
+  fmt.Println("New record ID is:", id)
 }
 
 func queryDb(foodindex *foods) error {
