@@ -7,6 +7,7 @@ import (
   "log"
   "net/http"
   "os"
+  "github.com/gorilla/mux"
 
   _ "github.com/lib/pq"
 )
@@ -32,14 +33,16 @@ const (
 )
 
 func main() {
+  router := mux.NewRouter()
   initDb()
   defer db.Close()
-  http.HandleFunc("/api/v1/foods", foodsHandler)
+  router.HandleFunc("/api/v1/foods", getFoods).Methods("GET")
+  router.HandleFunc("/api/v1/foods", createFood).Methods("POST")
   http.HandleFunc("/api/v1/food/{id}", foodHandler)
-  log.Fatal(http.ListenAndServe("localhost:8000", nil))
+  log.Fatal(http.ListenAndServe("localhost:8000", router))
 }
 
-func foodsHandler(w http.ResponseWriter, r *http.Request) {
+func getFoods(w http.ResponseWriter, r *http.Request) {
   foodindex := foods{}
 
   err := queryDb(&foodindex)
@@ -55,6 +58,23 @@ func foodsHandler(w http.ResponseWriter, r *http.Request) {
   }
 
   fmt.Fprintf(w, string(out))
+}
+
+func createFood(w http.ResponseWriter, r *http.Request) {
+  r.ParseForm()
+  name := r.FormValue("name")
+  calories := r.FormValue("calories")
+
+  sqlStatement := `
+  INSERT INTO foods (name, calories)
+  VALUES ($1, $2)
+  RETURNING id`
+  id := 0
+  err := db.QueryRow(sqlStatement, name, calories).Scan(&id)
+  if err != nil {
+    panic(err)
+  }
+  fmt.Println("New record ID is:", id)
 }
 
 func queryDb(foodindex *foods) error {
@@ -88,7 +108,6 @@ func queryDb(foodindex *foods) error {
 }
 
 func foodHandler(w http.ResponseWriter, r *http.Request) {
-    //...
 }
 
 func initDb() {
@@ -139,121 +158,3 @@ func dbConfig() map[string]string {
   conf[dbname] = name
   return conf
 }
-
-// package main
-
-// import (
-//     "os"
-    // "database/sql"
-    // "fmt"
-    // _ "github.com/lib/pq"
-    // "encoding/json"
-    // "log"
-    // "net/http"
-    // "github.com/gorilla/mux"
-// )
-//
-
-// type Food struct {
-//     ID        string   `json:"id,omitempty"`
-//     Name      string   `json:"name,omitempty"`
-//     Calories  int      `json:"calories,omitempty"`
-//  }
-
-// var foods []Food
-
-// func GetFoods(w http.ResponseWriter, r *http.Request) {
-//   json.NewEncoder(w).Encode(foods)
-// }
-//
-// func (a *App) getFood(w http.ResponseWriter, r *http.Request) {
-//   vars := mux.Vars(r)
-//   id, err := strconv.Atoi(vars["id"])
-//   if err != nil {
-//       respondWithError(w, http.StatusBadRequest, "Invalid product ID")
-//       return
-//   }
-//
-//   p := food{ID: id}
-//   if err := p.getFood(a.DB); err != nil {
-//       switch err {
-//       case sql.ErrNoRows:
-//           respondWithError(w, http.StatusNotFound, "Food not found")
-//       default:
-//           respondWithError(w, http.StatusInternalServerError, err.Error())
-//       }
-//       return
-//   }
-//
-//   respondWithJSON(w, http.StatusOK, p)
-// }
-
-// func (a *App) createFood(w http.ResponseWriter, r *http.Request) {
-//   // params := mux.Vars(r)
-//   var p food
-//   decoder := json.NewDecoder(r.Body)
-//   if err := decoder.Decode(&p); err != nil {
-//       respondWithError(w, http.StatusBadRequest, "Invalid request payload")
-//       return
-//   }
-//   defer r.Body.Close()
-//
-//   if err := p.createFood(a.DB); err != nil {
-//       respondWithError(w, http.StatusInternalServerError, err.Error())
-//       return
-//   }
-//
-//   respondWithJSON(w, http.StatusCreated, p)
-// }
-
-// func UpdateFood(w http.ResponseWriter, r *http.Request) {}
-// func DeleteFood(w http.ResponseWriter, r *http.Request) {}
-// func GetMeals(w http.ResponseWriter, r *http.Request) {}
-// func GetMealFoods(w http.ResponseWriter, r *http.Request) {}
-// func CreateMealFood(w http.ResponseWriter, r *http.Request) {}
-// func DeleteMealFood(w http.ResponseWriter, r *http.Request) {}
-
-// Database creation
-// CREATE TABLE foods
-//     (
-//         id serial NOT NULL,
-//         name character varying(100) NOT NULL,
-//         calories int,
-//     );
-
-// our main function
-// func main() {
-//   a := app{}
-//   a.Initalize(
-//     os.Getenv("APP_DB_USERNAME"),
-//     os.Getenv("APP_DB_PASSWORD"),
-//     os.Getenv("APP_DB_NAME"))
-//   a.Run(":8080")
-  // dbinfo := fmt.Sprintf("user=%s "+
-  //   "password=%s dbname=%s sslmode=disable",
-  //   DB_USER, DB_PASSWORD, DB_NAME)
-  // db, err := sql.Open("postgres", dbinfo)
-  // if err != nil {
-  //   panic(err)
-  // }
-  // defer db.Close()
-  //
-  // err = db.Ping()
-  // if err != nil {
-  //   panic(err)
-  // }
-  //
-  // fmt.Println("Successfully connected!")
-  //
-  // router := mux.NewRouter()
-  // router.HandleFunc("/api/v1/foods", GetFoods).Methods("GET")
-  // router.HandleFunc("/api/v1/foods/{id}", GetFood).Methods("GET")
-  // router.HandleFunc("/api/v1/foods", CreateFood).Methods("POST")
-  // router.HandleFunc("/api/v1/foods/{id}", UpdateFood).Methods("PATCH")
-  // router.HandleFunc("/api/v1/foods/{id}", DeleteFood).Methods("DELETE")
-  // router.HandleFunc("/api/v1/meals", GetMeals).Methods("GET")
-  // router.HandleFunc("/api/v1/meals/{id}/foods", GetMealFoods).Methods("GET")
-  // router.HandleFunc("/api/v1/meals/{id}/foods/{id}", CreateMealFood).Methods("POST")
-  // router.HandleFunc("/api/v1/meals/{id}/foods/{id}", DeleteMealFood).Methods("DELETE")
-//   log.Fatal(http.ListenAndServe(":8000", router))
-// }
